@@ -26,4 +26,7 @@ module.exports = defineConfig({
       // implement node event listeners here
     },
   },
+  expose: {
+    apiUrl: 'https://serverest.dev'
+  }
 });

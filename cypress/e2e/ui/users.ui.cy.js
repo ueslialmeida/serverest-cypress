@@ -40,6 +40,14 @@ describe('Anonymous user registration', () => {
         const invalidUsers = [
             {
                 data: {
+                    name: faker.internet.displayName(),
+                    email: 'fulano@qa.com',
+                    password: faker.internet.password()
+                },
+                error: 'Este email já está sendo usado'
+            },
+            {
+                data: {
                     email: faker.internet.email(),
                     password: faker.internet.password()
                 },
