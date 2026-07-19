@@ -1,4 +1,5 @@
 const { defineConfig } = require("cypress");
+const dotenv = require('dotenv').config()
 
 module.exports = defineConfig({
   allowCypressEnv: false,
@@ -22,11 +23,16 @@ module.exports = defineConfig({
 
   e2e: {
     baseUrl: 'https://front.serverest.dev',
+    expose: {
+      apiUrl: process.env.API_URL
+    },
     setupNodeEvents(on, config) {
       // implement node event listeners here
+
+      config.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL
+      config.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+
+      return config
     },
   },
-  expose: {
-    apiUrl: 'https://serverest.dev'
-  }
 });

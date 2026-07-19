@@ -1,12 +1,22 @@
 describe('Auth Tests - POST /login', () => {
     const endpoint = `${Cypress.expose('apiUrl')}/login`
+    let adminEmail
+    let adminPassword
+
+    before(() => {
+        cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
+            adminEmail = ADMIN_EMAIL
+            adminPassword = ADMIN_PASSWORD
+        })
+    })
+
     it('should login successfully (status 200)', () => {
         cy.request({
             method: 'POST',
             url: endpoint,
             body: {
-                email: 'fulano@qa.com',
-                password: 'teste'
+                email: adminEmail,
+                password: adminPassword
             }
         }).then((response) => {
             expect(response.status).to.eq(200)

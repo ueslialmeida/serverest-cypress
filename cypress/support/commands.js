@@ -25,7 +25,7 @@
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
 Cypress.Commands.add('login', (email, password) => {
-    cy.session([email, password], () => {
+    cy.session(email, () => {
         cy.visit('/login')
 
         cy.get('[data-testid="email"]').type(email, {log: false})
