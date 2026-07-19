@@ -155,3 +155,221 @@ describe('Users Tests - POST /usuarios', () => {
         })
     })
 })
+
+describe('Users Tests - PUT /usuarios/{_id}', () => {
+    const endpoint = `${Cypress.expose('apiUrl')}/usuarios`
+
+    it('should update a user successfully (status 200)', () => {
+        const newUser = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'true'
+        }
+
+        // Insert a new user to avoid missing data errors
+        cy.request({
+            method: 'POST',
+            url: endpoint,
+            body: newUser
+        }).then((response) => {
+            // Get the data to perform a PUT request for update
+            const userId = response.body._id
+
+            cy.request({
+                method: 'PUT',
+                url: `${endpoint}/${userId}`,
+                body: {
+                    nome: 'John Doe',
+                    email: faker.internet.email(),
+                    password: 'newpass',
+                    administrador: 'false'
+                }
+            }).then((response) => {
+                expect(response.status).to.eq(200)
+                expect(response.body.message).to.eq('Registro alterado com sucesso')
+            })
+        })
+    })
+
+    it('should create a new user if editing an unexistent user (status 201)', () => {
+        const userData = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'true'
+        }
+        const unexistentId = '1LxuEsZMZMev0VBV'
+
+        cy.request({
+            method: 'PUT',
+            url: `${endpoint}/${unexistentId}`,
+            body: userData
+        }).then((response) => {
+            expect(response.status).to.eq(201)
+            expect(response.body.message).to.eq('Cadastro realizado com sucesso')
+            expect(response.body).to.have.property('_id')
+        })
+    })
+
+    it('should not allow to update a user with existing email (status 400)', () => {
+        const newUserA = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'true'
+        }
+
+        const newUserB = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'true'
+        }
+
+        // Create the user A to avoid missing data errors
+        cy.request({
+            method: 'POST',
+            url: endpoint,
+            body: newUserA
+        }).then((responseA) => {
+            // Create the user B to avoid missing data errors
+            cy.request({
+                method: 'POST',
+                url: endpoint,
+                body: newUserB
+            }).then((responseB) => {
+                const userBId = responseB.body._id
+
+                // Try to update user B using user A data (email is the main data)
+                cy.request({
+                    method: 'PUT',
+                    url: `${endpoint}/${userBId}`,
+                    body: newUserA,
+                    failOnStatusCode: false
+                }).then((response) => {
+                    expect(response.status).to.eq(400)
+                    expect(response.body.message).to.eq('Este email já está sendo usado')
+                })
+            })
+        })
+    })
+})
+
+describe('Users Tests - DELETE /usuarios/{_id}', () => {
+    const endpoint = `${Cypress.expose('apiUrl')}/usuarios`
+
+    it('should delete a user successfully (status 200)', () => {
+        const newUser = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'true'
+        }
+
+        // Creates a new user to avoid missing error data
+        cy.request({
+            method: 'POST',
+            url: endpoint,
+            body: newUser
+        }).then((response) => {
+            const userId = response.body._id
+
+            // Deletes the user
+            cy.request({
+                method: 'DELETE',
+                url: `${endpoint}/${userId}`
+            }).then((response) => {
+                expect(response.status).to.eq(200)
+                expect(response.body.message).to.eq('Registro excluído com sucesso')
+            })
+        })
+    })
+
+    it('should return a message that record was not deleted when user ID does not exist (status 200)', () => {
+        const unexistentId = '1LxuEsZMZMev0VBV'
+
+        cy.request({
+            method: 'DELETE',
+            url: `${endpoint}/${unexistentId}`
+        }).then((response) => {
+            expect(response.status).to.eq(200)
+            expect(response.body.message).to.eq('Nenhum registro excluído')
+        })
+    })
+
+    it('should not delete a user that has a shopping cart (status 400)', () => {
+        let userId
+        let authToken
+        const newUser = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'true'
+        }
+
+        const newProduct = {
+            nome: faker.commerce.productName(),
+            preco: 150,
+            descricao: faker.commerce.productDescription(),
+            quantidade: 42
+        }
+
+        // Creates a new user
+        cy.request({
+            method: 'POST',
+            url: endpoint,
+            body: newUser
+        }).then((responseUser) => {
+            userId = responseUser.body._id
+
+            // Login as the new user (admin)
+            cy.request({
+                method: 'POST',
+                url: `${Cypress.expose('apiUrl')}/login`,
+                body: {
+                    email: newUser.email,
+                    password: newUser.password
+                }
+            }).then((responseLogin) => {
+                authToken = responseLogin.body.authorization
+
+                // Creates a product
+                cy.request({
+                    method: 'POST',
+                    url: `${Cypress.expose('apiUrl')}/produtos`,
+                    headers: { Authorization: authToken },
+                    body: newProduct
+                }).then((responseProduct) => {
+                    const productId = responseProduct.body._id
+
+                    // Creates a shopping cart for the logged in user
+                    cy.request({
+                        method: 'POST',
+                        url: `${Cypress.expose('apiUrl')}/carrinhos`,
+                        headers: { Authorization: authToken },
+                        body: {
+                            produtos: [
+                                {
+                                    idProduto: productId,
+                                    quantidade: 1
+                                }
+                            ]
+                        }
+                    }).then((responseCart) => {
+                        // Try deleting the user
+                        cy.request({
+                            method: 'DELETE',
+                            url: `${endpoint}/${userId}`,
+                            failOnStatusCode: false
+                        }).then((response) => {
+                            expect(response.status).to.eq(400)
+                            expect(response.body.message).to.eq('Não é permitido excluir usuário com carrinho cadastrado')
+                            expect(response.body).to.have.property('idCarrinho')
+                        })
+                    })
+                })
+            })
+        })
+    })
+})

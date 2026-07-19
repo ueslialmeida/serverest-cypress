@@ -1,6 +1,12 @@
 import { faker } from '@faker-js/faker'
 
 describe('Authentication module positive tests', () => {
+    before(() => {
+        cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
+            cy.createAdminTestUser(ADMIN_EMAIL, ADMIN_PASSWORD)
+        })
+    })
+
     beforeEach(() => {
         cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
             cy.login(ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -10,7 +16,7 @@ describe('Authentication module positive tests', () => {
     it('should login successfully', () => {
 
         cy.visit('/admin/home')
-        cy.get('h1').should('be.visible').and('have.text', 'Bem Vindo  Fulano da Silva')
+        cy.get('h1').should('be.visible').and('include.text', 'Bem Vindo')
     })
 
     it('should logout successfully', () => {

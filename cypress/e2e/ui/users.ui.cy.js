@@ -79,6 +79,12 @@ describe('Anonymous user registration', () => {
 })
 
 describe('User management through Admin Panel', () => {
+    before(() => {
+        cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
+            cy.createAdminTestUser(ADMIN_EMAIL, ADMIN_PASSWORD)
+        })
+    })
+
     beforeEach(() => {
         cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
             cy.login(ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -89,7 +95,7 @@ describe('User management through Admin Panel', () => {
         cy.visit('/admin/listarusuarios')
 
         cy.get('h1').should('contain.text', 'Lista dos usuários')
-        cy.contains('tr', 'Fuluno da Silva').should('include.text', 'fulano@qa.com')
+        cy.contains('tr', 'Cypress User').should('be.visible')
     })
 
     it('should delete a user through Admin Panel', () => {
