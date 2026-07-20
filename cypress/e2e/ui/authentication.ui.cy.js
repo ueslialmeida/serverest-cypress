@@ -24,7 +24,7 @@ describe('Authentication module positive tests', () => {
 
         cy.get('h1').should('be.visible').and('have.text', 'Login')
         cy.get('[data-testid="email"]').should('be.visible')
-        cy.get('[data-testid="password"]').should('be.visible')
+        cy.get('[data-testid="senha"]').should('be.visible')
         cy.get('[data-testid="entrar"]').should('be.visible')
     })
 })

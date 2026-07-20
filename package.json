@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "cy:api:run": "cypress run --spec cypress/e2e/api/**/*",
+    "cy:ui:run": "cypress run --spec cypress/e2e/ui/**/*"
+  },
   "devDependencies": {
     "@faker-js/faker": "^10.5.0",
     "cypress": "^15.18.1"

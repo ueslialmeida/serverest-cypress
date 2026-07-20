@@ -7,6 +7,7 @@ module.exports = defineConfig({
   pageLoadTimeout: 60000,
   requestTimeout: 5000,
   responseTimeout: 30000,
+
   
   viewportWidth: 1920,
   viewportHeight: 1080,
