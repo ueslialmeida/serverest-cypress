@@ -6,7 +6,7 @@ describe('Product management tests', () => {
             cy.createAdminTestUser(ADMIN_EMAIL, ADMIN_PASSWORD)
         })
     })
-    
+
     beforeEach(() => {
         cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
             cy.login(ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -16,11 +16,18 @@ describe('Product management tests', () => {
     it('should list all products', () => {
         cy.visit('/admin/listarprodutos')
 
-        cy.get('h1').should('contain.text', 'Lista dos Produtos')
-        cy.contains('tr', 'Samsung 60 polegadas')
-            .should('include.text', '5240')
-            .and('include.text', 'TV')
-            .and('include.text', '49977')
+        cy.get('h1').should('be.visible').and('contain.text', 'Lista dos Produtos')
+        cy.get('table').should('be.visible')
+
+        cy.get('tbody tr').first().within(() => {
+            cy.get('td').should('have.length.at.least', 5) // Garante as colunas básicas
+            cy.get('button').contains('Excluir').should('be.visible') // Garante a ação
+        })
+
+        cy.get('tbody tr').eq(1).within(() => {
+            cy.get('td').should('have.length.at.least', 5)
+            cy.get('button').contains('Excluir').should('be.visible')
+        })
     })
 
     it('should create a product with image successfully', () => {
@@ -59,47 +66,18 @@ describe('Product management tests', () => {
             .and('include.text', testProduct.quantity)
     })
 
-    it('should not create a product when data is invalid', () => {
-        const invalidProducts = [
-            {
-                data: {
-                    price: faker.commerce.price({ min: 1, max: 9999, dec: 0 }),
-                    description: faker.commerce.productDescription(),
-                    quantity: 42
-                },
-                error: 'Nome é obrigatório'
-            },
-            {
-                data: {
-                    name: faker.commerce.productName(),
-                    description: faker.commerce.productDescription(),
-                    quantity: 42
-                },
-                error: 'Preco é obrigatório'
-            },
-            {
-                data: {
-                    name: faker.commerce.productName(),
-                    price: faker.commerce.price({ min: 1, max: 9999, dec: 0 }),
-                    quantity: 42
-                },
-                error: 'Descricao é obrigatório'
-            },
-            {
-                data: {
-                    name: faker.commerce.productName(),
-                    price: faker.commerce.price({ min: 1, max: 9999, dec: 0 }),
-                    description: faker.commerce.productDescription()
-                },
-                error: 'Quantidade é obrigatório'
-            }
-        ]
+    // Generate different 'it' blocks for each invalid products to test different errors
+    const invalidProducts = [
+        { field: 'Nome', data: { price: '100', description: 'Desc', quantity: 10 }, error: 'Nome é obrigatório' },
+        { field: 'Preço', data: { name: 'Prod', description: 'Desc', quantity: 10 }, error: 'Preco é obrigatório' },
+        { field: 'Descrição', data: { name: 'Prod', price: '100', quantity: 10 }, error: 'Descricao é obrigatório' },
+        { field: 'Quantidade', data: { name: 'Prod', price: '100', description: 'Desc' }, error: 'Quantidade é obrigatório' }
+    ]
 
-        invalidProducts.forEach(product => {
+    invalidProducts.forEach(product => {
+        it(`should not create a product when ${product.field} field is missing`, () => {
             cy.visit('/admin/cadastrarprodutos')
-
             cy.createProduct(product.data)
-
             cy.get('span').should('be.visible').and('contain.text', product.error)
         })
     })

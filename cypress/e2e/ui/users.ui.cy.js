@@ -36,42 +36,16 @@ describe('Anonymous user registration', () => {
         cy.get('h1').should('contain.text', `Bem Vindo  ${testUser.name}`)
     })
 
-    it('should not register a user with invalid data', () => {
-        const invalidUsers = [
-            {
-                data: {
-                    name: faker.internet.displayName(),
-                    email: 'fulano@qa.com',
-                    password: faker.internet.password()
-                },
-                error: 'Este email já está sendo usado'
-            },
-            {
-                data: {
-                    email: faker.internet.email(),
-                    password: faker.internet.password()
-                },
-                error: 'Nome é obrigatório'
-            },
-            {
-                data: {
-                    name: faker.internet.displayName(),
-                    password: faker.internet.password()
-                },
-                error: 'Email é obrigatório'
-            },
-            {
-                data: {
-                    name: faker.internet.displayName(),
-                    email: faker.internet.email(),
-                },
-                error: 'Password é obrigatório'
-            }
-        ]
+    const invalidUsers = [
+        { field: 'Email Duplicado', data: { name: faker.internet.displayName(), email: 'fulano@qa.com', password: faker.internet.password() }, error: 'Este email já está sendo usado' },
+        { field: 'Nome Ausente', data: { email: faker.internet.email(), password: faker.internet.password() }, error: 'Nome é obrigatório' },
+        { field: 'Email Ausente', data: { name: faker.internet.displayName(), password: faker.internet.password() }, error: 'Email é obrigatório' },
+        { field: 'Password Ausente', data: { name: faker.internet.displayName(), email: faker.internet.email() }, error: 'Password é obrigatório' }
+    ]
 
-        invalidUsers.forEach((user) => {
+    invalidUsers.forEach((user) => {
+        it(`should not register a user when has ${user.field}`, () => {
             cy.visit('/cadastrarusuarios')
-
             cy.createUser(user.data)
             cy.get('span').should('be.visible').and('contain.text', user.error)
         })
@@ -98,12 +72,12 @@ describe('User management through Admin Panel', () => {
         cy.contains('tr', 'Cypress User').should('be.visible')
     })
 
-    it('should delete a user through Admin Panel', () => {
-
+    it('should create a user through Admin Panel', () => {
         const testUser = {
             name: faker.internet.displayName(),
             email: faker.internet.email(),
-            password: faker.internet.password()
+            password: faker.internet.password(),
+            administrador: 'false'
         }
 
         cy.visit('/admin/cadastrarusuarios')
@@ -113,9 +87,22 @@ describe('User management through Admin Panel', () => {
         cy.get('h1').should('contain.text', 'Lista dos usuários')
         cy.get('td').should('contain.text', testUser.name)
         cy.get('td').should('contain.text', testUser.email)
+    })
+
+    it('should delete a user through Admin Panel', () => {
+        const testUser = {
+            nome: faker.internet.displayName(),
+            email: faker.internet.email(),
+            password: faker.internet.password(),
+            administrador: 'false'
+        }
+
+        cy.requestCreateUser(testUser)
+
+        cy.visit('/admin/listarusuarios')
 
         cy.contains('tr', testUser.email).find('button').contains('Excluir').click()
-        cy.get('td').should('not.contain.text', testUser.name)
+        cy.get('td').should('not.contain.text', testUser.nome)
         cy.get('td').should('not.contain.text', testUser.email)
     })
 })

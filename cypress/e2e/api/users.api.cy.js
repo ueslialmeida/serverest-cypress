@@ -1,13 +1,11 @@
 import { faker } from '@faker-js/faker'
+import { generateUserPayload, generateProductPayload } from '../../support/utils'
 
 describe('Users Tests - GET /usuarios', () => {
     const endpoint = `${Cypress.expose('apiUrl')}/usuarios`
 
     it('should list all users (status 200)', () => {
-        cy.request({
-            method: 'GET',
-            url: endpoint,
-        }).then((response) => {
+        cy.request('GET', endpoint).then((response) => {
             expect(response.status).to.eq(200)
             expect(response.body).to.have.property('quantidade')
             expect(response.body.quantidade).to.be.a('number')
@@ -22,13 +20,7 @@ describe('Users Tests - GET /usuarios', () => {
     })
 
     it('should return admin users', () => {
-        cy.request({
-            method: 'GET',
-            url: endpoint,
-            qs: {
-                administrador : 'true'
-            }
-        }).then((response) => {
+        cy.request({ method: 'GET', url: endpoint, qs: { administrador: 'true' } }).then((response) => {
             expect(response.status).to.eq(200)
 
             response.body.usuarios.forEach(user => {
@@ -38,53 +30,51 @@ describe('Users Tests - GET /usuarios', () => {
     })
 
     it('should filter user by name and email', () => {
-        cy.request({
-            method: 'GET',
-            url: endpoint,
-            qs: {
-                nome: 'Fulano da Silva',
-                email: 'fulano@qa.com'
-            }
-        }).then((response) => {
-            expect(response.status).to.eq(200)
+        const testUser = generateUserPayload()
 
-            response.body.usuarios.forEach(user => {
-                expect(user.nome).to.eq('Fulano da Silva')
-                expect(user.email).to.eq('fulano@qa.com')
-            });
+        cy.request('POST', endpoint, testUser).then(() => {
+            cy.request({
+                method: 'GET',
+                url: endpoint,
+                qs: { nome: testUser.nome, email: testUser.email }
+            }).then((response) => {
+                expect(response.status).to.eq(200)
+                expect(response.body.usuarios[0].nome).to.eq(testUser.nome)
+                expect(response.body.usuarios[0].email).to.eq(testUser.email)
+            })
         })
     })
 
     it('should filter a user by valid ID', () => {
-        cy.request({
-            method: 'GET',
-            url: endpoint,
-            qs: {
-                _id: '0uxuPY0cbmQhpEz1'
-            }
-        }).then((response) => {
-            expect(response.status).to.eq(200)
-            expect(response.body.usuarios[0]._id).to.eq('0uxuPY0cbmQhpEz1')
+        const testUser = generateUserPayload()
+
+        cy.request('POST', endpoint, testUser).then((responsePost) => {
+            const userId = responsePost.body._id
+
+            cy.request({ method: 'GET', url: endpoint, qs: { _id: userId } }).then((response) => {
+                expect(response.status).to.eq(200)
+                expect(response.body.usuarios[0]._id).to.eq(userId)
+            })
         })
     })
 
     it('should list specific user data if it exists (status 200)', () => {
-        cy.request({
-            method: 'GET',
-            url: `${endpoint}/0uxuPY0cbmQhpEz1`,
-            failOnStatusCode: false
-        }).then((response) => {
-            expect(response.status).to.eq(200)
-            expect(response.body).to.have.all.keys('nome', 'email', 'password', 'administrador', '_id')
+        const testUser = generateUserPayload()
+
+        cy.request('POST', endpoint, testUser).then((responsePost) => {
+            const userId = responsePost.body._id
+
+            cy.request('GET', `${endpoint}/${userId}`).then((response) => {
+                expect(response.status).to.eq(200)
+                expect(response.body).to.have.all.keys('nome', 'email', 'password', 'administrador', '_id')
+            })
         })
     })
 
     it('should return an error message if user does not exist (status 400)', () => {
-        cy.request({
-            method: 'GET',
-            url: `${endpoint}/0uxuPY0cbmQhpEzi`,
-            failOnStatusCode: false
-        }).then((response) => {
+        const nonexistentId = '1LxuEsZMZMev0VBV'
+        
+        cy.request({ method: 'GET', url: `${endpoint}/${nonexistentId}`, failOnStatusCode: false }).then((response) => {
             expect(response.status).to.eq(400)
             expect(response.body.message).to.eq('Usuário não encontrado')
         })
@@ -95,18 +85,7 @@ describe('Users Tests - POST /usuarios', () => {
     const endpoint = `${Cypress.expose('apiUrl')}/usuarios`
 
     it('should create a user successfully (status 201)', () => {
-        const newUser = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
-
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: newUser
-        }).then((response) => {
+        cy.request('POST', endpoint, generateUserPayload()).then((response) => {
             expect(response.status).to.eq(201)
             expect(response.body.message).to.eq('Cadastro realizado com sucesso')
             expect(response.body).to.have.property('_id')
@@ -115,38 +94,25 @@ describe('Users Tests - POST /usuarios', () => {
     })
 
     it('should not create a user with duplicate email (status 400)', () => {
-        const existingUser = {
-            nome: faker.internet.displayName(),
-            email: 'fulano@qa.com',
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
+        const testUser = generateUserPayload()
 
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: existingUser,
-            failOnStatusCode: false
-        }).then((response) => {
-            expect(response.status).to.eq(400)
-            expect(response.body.message).to.eq('Este email já está sendo usado')
+        cy.request('POST', endpoint, testUser).then(() => {
+            cy.request({
+                method: 'POST',
+                url: endpoint,
+                body: testUser,
+                failOnStatusCode: false
+            }).then((response) => {
+                expect(response.status).to.eq(400)
+                expect(response.body.message).to.eq('Este email já está sendo usado')
+            })
         })
     })
 
     it('should not create users with invalid data', () => {
-        const invalidUser = {
-            nome: '',
-            email: '',
-            password: '',
-            administrador: ''
-        }
+        const invalidUser = { nome: '', email: '', password: '', administrador: '' }
 
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: invalidUser,
-            failOnStatusCode: false
-        }).then((response) => {
+        cy.request({ method: 'POST', url: endpoint, body: invalidUser, failOnStatusCode: false }).then((response) => {
             expect(response.status).to.eq(400)
             expect(response.body.nome).to.eq('nome não pode ficar em branco')
             expect(response.body.email).to.eq('email não pode ficar em branco')
@@ -160,32 +126,11 @@ describe('Users Tests - PUT /usuarios/{_id}', () => {
     const endpoint = `${Cypress.expose('apiUrl')}/usuarios`
 
     it('should update a user successfully (status 200)', () => {
-        const newUser = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
-
-        // Insert a new user to avoid missing data errors
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: newUser
-        }).then((response) => {
+        cy.request('POST', endpoint, generateUserPayload()).then((responsePost) => {
             // Get the data to perform a PUT request for update
-            const userId = response.body._id
+            const userId = responsePost.body._id
 
-            cy.request({
-                method: 'PUT',
-                url: `${endpoint}/${userId}`,
-                body: {
-                    nome: 'John Doe',
-                    email: faker.internet.email(),
-                    password: 'newpass',
-                    administrador: 'false'
-                }
-            }).then((response) => {
+            cy.request('PUT', `${endpoint}/${userId}`, generateUserPayload()).then((response) => {
                 expect(response.status).to.eq(200)
                 expect(response.body.message).to.eq('Registro alterado com sucesso')
             })
@@ -193,19 +138,9 @@ describe('Users Tests - PUT /usuarios/{_id}', () => {
     })
 
     it('should create a new user if editing an unexistent user (status 201)', () => {
-        const userData = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
-        const unexistentId = '1LxuEsZMZMev0VBV'
+        const nonexistentId = '1LxuEsZMZMev0VBV'
 
-        cy.request({
-            method: 'PUT',
-            url: `${endpoint}/${unexistentId}`,
-            body: userData
-        }).then((response) => {
+        cy.request('PUT', `${endpoint}/${nonexistentId}`, generateUserPayload()).then((response) => {
             expect(response.status).to.eq(201)
             expect(response.body.message).to.eq('Cadastro realizado com sucesso')
             expect(response.body).to.have.property('_id')
@@ -213,39 +148,18 @@ describe('Users Tests - PUT /usuarios/{_id}', () => {
     })
 
     it('should not allow to update a user with existing email (status 400)', () => {
-        const newUserA = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
-
-        const newUserB = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
+        const userA = generateUserPayload()
+        const userB = generateUserPayload()
 
         // Create the user A to avoid missing data errors
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: newUserA
-        }).then((responseA) => {
-            // Create the user B to avoid missing data errors
-            cy.request({
-                method: 'POST',
-                url: endpoint,
-                body: newUserB
-            }).then((responseB) => {
+        cy.request('POST', endpoint, userA).then(() => {
+            cy.request('POST', endpoint, userB).then((responseB) => {
                 const userBId = responseB.body._id
 
-                // Try to update user B using user A data (email is the main data)
                 cy.request({
                     method: 'PUT',
                     url: `${endpoint}/${userBId}`,
-                    body: newUserA,
+                    body: userA,
                     failOnStatusCode: false
                 }).then((response) => {
                     expect(response.status).to.eq(400)
@@ -260,26 +174,11 @@ describe('Users Tests - DELETE /usuarios/{_id}', () => {
     const endpoint = `${Cypress.expose('apiUrl')}/usuarios`
 
     it('should delete a user successfully (status 200)', () => {
-        const newUser = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
-
-        // Creates a new user to avoid missing error data
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: newUser
-        }).then((response) => {
+        cy.request('POST', endpoint, generateUserPayload('true')).then((response) => {
             const userId = response.body._id
 
             // Deletes the user
-            cy.request({
-                method: 'DELETE',
-                url: `${endpoint}/${userId}`
-            }).then((response) => {
+            cy.request('DELETE', `${endpoint}/${userId}`).then((response) => {
                 expect(response.status).to.eq(200)
                 expect(response.body.message).to.eq('Registro excluído com sucesso')
             })
@@ -287,60 +186,30 @@ describe('Users Tests - DELETE /usuarios/{_id}', () => {
     })
 
     it('should return a message that record was not deleted when user ID does not exist (status 200)', () => {
-        const unexistentId = '1LxuEsZMZMev0VBV'
-
-        cy.request({
-            method: 'DELETE',
-            url: `${endpoint}/${unexistentId}`
-        }).then((response) => {
+        const nonexistentId = '1LxuEsZMZMev0VBV'
+        
+        cy.request('DELETE', `${endpoint}/${nonexistentId}`).then((response) => {
             expect(response.status).to.eq(200)
             expect(response.body.message).to.eq('Nenhum registro excluído')
         })
     })
 
     it('should not delete a user that has a shopping cart (status 400)', () => {
-        let userId
-        let authToken
-        const newUser = {
-            nome: faker.internet.displayName(),
-            email: faker.internet.email(),
-            password: faker.internet.password(),
-            administrador: 'true'
-        }
+        // let userId
+        // let authToken
+        const newUser = generateUserPayload('true')
+        const newProduct = generateProductPayload()
 
-        const newProduct = {
-            nome: faker.commerce.productName(),
-            preco: 150,
-            descricao: faker.commerce.productDescription(),
-            quantidade: 42
-        }
-
-        // Creates a new user
-        cy.request({
-            method: 'POST',
-            url: endpoint,
-            body: newUser
-        }).then((responseUser) => {
-            userId = responseUser.body._id
+        // Creates a new user to avoid missing data errors
+        cy.request('POST', endpoint, newUser).then((responseUser) => {
+            const userId = responseUser.body._id
 
             // Login as the new user (admin)
-            cy.request({
-                method: 'POST',
-                url: `${Cypress.expose('apiUrl')}/login`,
-                body: {
-                    email: newUser.email,
-                    password: newUser.password
-                }
-            }).then((responseLogin) => {
-                authToken = responseLogin.body.authorization
+            cy.request('POST', `${Cypress.expose('apiUrl')}/login`, { email: newUser.email, password: newUser.password }).then((responseLogin) => {
+                const authToken = responseLogin.body.authorization
 
                 // Creates a product
-                cy.request({
-                    method: 'POST',
-                    url: `${Cypress.expose('apiUrl')}/produtos`,
-                    headers: { Authorization: authToken },
-                    body: newProduct
-                }).then((responseProduct) => {
+                cy.request({ method: 'POST', url: `${Cypress.expose('apiUrl')}/produtos`, headers: { Authorization: authToken }, body: newProduct }).then((responseProduct) => {
                     const productId = responseProduct.body._id
 
                     // Creates a shopping cart for the logged in user
@@ -358,11 +227,7 @@ describe('Users Tests - DELETE /usuarios/{_id}', () => {
                         }
                     }).then((responseCart) => {
                         // Try deleting the user
-                        cy.request({
-                            method: 'DELETE',
-                            url: `${endpoint}/${userId}`,
-                            failOnStatusCode: false
-                        }).then((response) => {
+                        cy.request({ method: 'DELETE', url: `${endpoint}/${userId}`, failOnStatusCode: false }).then((response) => {
                             expect(response.status).to.eq(400)
                             expect(response.body.message).to.eq('Não é permitido excluir usuário com carrinho cadastrado')
                             expect(response.body).to.have.property('idCarrinho')

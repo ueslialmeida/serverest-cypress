@@ -40,6 +40,17 @@ Cypress.Commands.add('createAdminTestUser', (email, password) => {
     })
 })
 
+Cypress.Commands.add('requestCreateUser', (userData) => {
+    cy.request({
+        method: 'POST',
+        url: `${Cypress.expose('apiUrl')}/usuarios`,
+        body: userData,
+        failOnStatusCode: false
+    }).then((response) => {
+        response.status === 201 ? cy.log('User data create') : cy.log('User was not created')
+    })
+})
+
 Cypress.Commands.add('login', (email, password) => {
     cy.session(email, () => {
         cy.visit('/login')

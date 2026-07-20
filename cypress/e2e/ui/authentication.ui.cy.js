@@ -11,22 +11,20 @@ describe('Authentication module positive tests', () => {
         cy.env(['ADMIN_EMAIL', 'ADMIN_PASSWORD']).then(({ADMIN_EMAIL, ADMIN_PASSWORD}) => {
             cy.login(ADMIN_EMAIL, ADMIN_PASSWORD)
         })
+
+        cy.visit('/admin/home')
     })
 
     it('should login successfully', () => {
-
-        cy.visit('/admin/home')
         cy.get('h1').should('be.visible').and('include.text', 'Bem Vindo')
     })
 
     it('should logout successfully', () => {
-        cy.visit('/admin/home')
-
         cy.logout()
 
         cy.get('h1').should('be.visible').and('have.text', 'Login')
         cy.get('[data-testid="email"]').should('be.visible')
-        cy.get('[data-testid="email"]').should('be.visible')
+        cy.get('[data-testid="password"]').should('be.visible')
         cy.get('[data-testid="entrar"]').should('be.visible')
     })
 })
