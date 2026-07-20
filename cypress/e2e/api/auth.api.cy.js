@@ -11,6 +11,12 @@ describe('Auth Tests - POST /login', () => {
     })
 
     it('should login successfully (status 200)', () => {
+        // Before trying to login makes sure to create a new admin user
+        // based on .env file user data just for .env use demo
+        // in this ServeRest particular case we could just create a random admin user 
+        // sending a POST request with an admin user payload
+        cy.createAdminTestUser(adminEmail, adminPassword)
+        
         cy.request({
             method: 'POST',
             url: endpoint,
